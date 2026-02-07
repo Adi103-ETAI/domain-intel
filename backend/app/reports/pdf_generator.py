@@ -224,19 +224,37 @@ class PDFReportGenerator:
         
         domain_info = data.get('domain_info', {})
         
+        # Format status codes - clean up WHOIS status URLs
+        raw_status = domain_info.get('status', [])
+        if isinstance(raw_status, list) and raw_status:
+            # Extract just the status name (before any URL)
+            cleaned_status = []
+            for s in raw_status[:5]:  # Limit to 5 statuses
+                if isinstance(s, str):
+                    # Take only the status name (e.g., "clientTransferProhibited" from "clientTransferProhibited https://...")
+                    status_name = s.split()[0] if ' ' in s else s
+                    cleaned_status.append(f"• {status_name}")
+            status_display = Paragraph('<br/>'.join(cleaned_status), self.styles['Normal'])
+        else:
+            status_display = 'N/A'
+        
+        # Format nameservers as bullet list
+        nameservers = domain_info.get('nameservers', [])
+        if nameservers:
+            ns_formatted = [f"• {ns}" for ns in nameservers[:4]]  # Limit to 4 nameservers
+            nameservers_display = Paragraph('<br/>'.join(ns_formatted), self.styles['Normal'])
+        else:
+            nameservers_display = 'N/A'
+        
         domain_data = [
             ['Field', 'Value'],
             ['Registrar', domain_info.get('registrar', 'N/A')],
             ['Registration Date', domain_info.get('creation_date', 'N/A')],
             ['Expiry Date', domain_info.get('expiry_date', 'N/A')],
             ['Domain Age', f"{domain_info.get('domain_age_days', 'N/A')} days"],
-            ['Status', ', '.join(domain_info.get('status', ['N/A']))],
+            ['Status', status_display],
+            ['Nameservers', nameservers_display],
         ]
-        
-        # Add nameservers if available
-        nameservers = domain_info.get('nameservers', [])
-        if nameservers:
-            domain_data.append(['Nameservers', '<br/>'.join(nameservers[:3])])
         
         domain_table = Table(domain_data, colWidths=[5*cm, 12*cm])
         domain_table.setStyle(TableStyle([
