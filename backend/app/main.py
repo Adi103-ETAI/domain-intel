@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.v1.endpoints import domain
+from app.api.v1.endpoints import domain, report
 import logging
 
 # Configure logging
@@ -36,7 +36,11 @@ app.include_router(
     prefix="/api/v1/domain",
     tags=["domain"]
 )
-
+app.include_router(
+    report.router, 
+    prefix="/api/v1/report", 
+    tags=["report"]
+)
 
 @app.on_event("startup")
 async def startup_event():
