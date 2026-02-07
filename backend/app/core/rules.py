@@ -26,7 +26,6 @@ class RiskRules:
         "namecheap",
         "freenom",
         "dynadot",
-        "godaddy", # Include if historically abused in your region
     ]
     
     # High-risk TLDs

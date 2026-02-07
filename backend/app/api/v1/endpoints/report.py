@@ -4,6 +4,7 @@ from app.models.domain import DomainAnalysisRequest
 from app.api.v1.endpoints.domain import analyze_domain
 from app.reports.pdf_generator import PDFReportGenerator
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -28,12 +29,13 @@ async def generate_report(request: DomainAnalysisRequest):
         # Generate PDF
         pdf_path = pdf_generator.generate_report(analysis_result.data)
         
+        filename = os.path.basename(pdf_path)
         return {
             "status": "success",
             "data": {
                 "report_path": pdf_path,
-                "filename": pdf_path.split('/')[-1],
-                "download_url": f"/api/v1/report/download/{pdf_path.split('/')[-1]}"
+                "filename": filename,
+                "download_url": f"/api/v1/report/download/{filename}"
             }
         }
         
