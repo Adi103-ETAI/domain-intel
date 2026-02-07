@@ -1,0 +1,42 @@
+# Core Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# HTTP & Networking
+requests==2.31.0
+httpx==0.26.0
+dnspython==2.5.0
+
+# WHOIS & Domain Tools
+python-whois==0.8.0
+whois==0.9.27
+
+# SSL/TLS Checks
+pyOpenSSL==24.0.0
+cryptography==42.0.0
+
+# Report Generation
+reportlab==4.0.9
+Pillow==10.2.0
+
+# Database (Optional)
+sqlalchemy==2.0.25
+alembic==1.13.1
+
+# AI Integration (Optional)
+anthropic==0.18.0
+openai==1.12.0
+
+# Utilities
+python-dotenv==1.0.1
+python-multipart==0.0.6
+email-validator==2.1.0
+
+# Development
+pytest==7.4.4
+pytest-asyncio==0.23.4
+pytest-cov==4.1.0
+black==24.1.1
+flake8==7.0.0
