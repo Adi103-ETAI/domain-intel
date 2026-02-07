@@ -1,4 +1,12 @@
-venv/
-.env
+# .gitignore
+
 __pycache__/
 *.pyc
+.env
+venv/
+.pytest_cache/
+
+# Ignore local DB and Reports
+*.db
+*.sqlite3
+/reports/*.pdf

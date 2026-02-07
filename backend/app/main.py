@@ -1,7 +1,21 @@
-from fastapi import FastAPI
+"""
+DomainIntel FastAPI Application
+
+Main application entry point with:
+- CORS configuration
+- Rate limiting (slowapi)
+- Database initialization
+- Router registration
+"""
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.api.v1.endpoints import domain, report
+from app.db.base import init_db
 import logging
 
 # Configure logging
@@ -12,6 +26,11 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# =====================================================
+# Rate Limiter Setup
+# =====================================================
+limiter = Limiter(key_func=get_remote_address)
+
 # Create FastAPI app
 app = FastAPI(
     title=settings.APP_NAME,
@@ -20,6 +39,12 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
 )
+
+# Add rate limiter to app state
+app.state.limiter = limiter
+
+# Add rate limit exceeded handler
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configure CORS
 app.add_middleware(
@@ -42,21 +67,37 @@ app.include_router(
     tags=["report"]
 )
 
+
 @app.on_event("startup")
 async def startup_event():
+    """Initialize application on startup"""
     logger.info(f"{settings.APP_NAME} v{settings.APP_VERSION} starting up...")
     logger.info(f"Debug mode: {settings.DEBUG}")
+    
+    # Initialize database tables
+    try:
+        init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {str(e)}")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    """Cleanup on shutdown"""
     logger.info(f"{settings.APP_NAME} shutting down...")
 
 
 @app.get("/")
 async def root():
+    """Root endpoint with API info"""
     return {
         "message": "DomainIntel API",
         "version": settings.APP_VERSION,
-        "docs": "/api/docs"
+        "docs": "/api/docs",
+        "features": {
+            "rate_limiting": "5 requests/minute per IP",
+            "caching": "LRU cache (128 entries)",
+            "database": "SQLite persistence"
+        }
     }
