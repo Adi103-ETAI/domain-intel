@@ -1,5 +1,0 @@
-# DomainIntel Monorepo
-# Deploy backend and frontend as separate Railway services
-
-[build]
-builder = "nixpacks"
