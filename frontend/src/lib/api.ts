@@ -236,7 +236,8 @@ export interface ThreatPoint {
     lat: number;
     lon: number;
     type: string;
-    city?: string;
+    city: string;
+    severity?: "Critical" | "High" | "Medium" | "Low";
 }
 
 export interface ThreatStats {
@@ -245,18 +246,24 @@ export interface ThreatStats {
     by_type: { type: string; count: number }[];
 }
 
-// Demo fallback data - INDIA CYBERCRIME HOTSPOTS
-const DEMO_MAP_DATA: ThreatPoint[] = [
-    { lat: 24.1760, lon: 86.9976, type: "Phishing/Vishing", city: "Jamtara" },
-    { lat: 28.1133, lon: 77.0019, type: "Financial Fraud", city: "Nuh" },
-    { lat: 19.0760, lon: 72.8777, type: "Illegal Hosting", city: "Mumbai" },
-    { lat: 12.9716, lon: 77.5946, type: "Scam Call Center", city: "Bangalore" },
-    { lat: 28.7041, lon: 77.1025, type: "Crypto Drainer", city: "Delhi" },
-    { lat: 22.5726, lon: 88.3639, type: "Illegal Gambling", city: "Kolkata" },
-    { lat: 18.5204, lon: 73.8567, type: "Malware C2", city: "Pune" },
-    { lat: 17.3850, lon: 78.4867, type: "Identity Theft", city: "Hyderabad" },
-    { lat: 26.9124, lon: 75.7873, type: "Sextortion", city: "Jaipur" },
-    { lat: 23.0225, lon: 72.5714, type: "Data Leak", city: "Ahmedabad" },
+// Demo fallback data - INDIA CYBERCRIME HOTSPOTS (Expanded)
+export const DEMO_MAP_DATA: ThreatPoint[] = [
+    { lat: 24.1760, lon: 86.9976, type: "Phishing", city: "Jamtara", severity: "Critical" },
+    { lat: 24.1800, lon: 87.0000, type: "Vishing", city: "Jamtara", severity: "High" },
+    { lat: 24.1700, lon: 86.9900, type: "Phishing", city: "Jamtara", severity: "Critical" },
+    { lat: 28.1133, lon: 77.0019, type: "Financial Fraud", city: "Nuh", severity: "Critical" },
+    { lat: 28.1200, lon: 77.0100, type: "Sextortion", city: "Nuh", severity: "High" },
+    { lat: 19.0760, lon: 72.8777, type: "Illegal Hosting", city: "Mumbai", severity: "Medium" },
+    { lat: 19.0800, lon: 72.8800, type: "Dark Web Node", city: "Mumbai", severity: "Critical" },
+    { lat: 12.9716, lon: 77.5946, type: "Tech Support Scam", city: "Bangalore", severity: "High" },
+    { lat: 12.9750, lon: 77.5980, type: "Call Center Fraud", city: "Bangalore", severity: "High" },
+    { lat: 28.7041, lon: 77.1025, type: "Crypto Drainer", city: "Delhi", severity: "Critical" },
+    { lat: 28.6500, lon: 77.2000, type: "UPI Fraud", city: "Delhi", severity: "High" },
+    { lat: 22.5726, lon: 88.3639, type: "Betting App", city: "Kolkata", severity: "Medium" },
+    { lat: 17.3850, lon: 78.4867, type: "Identity Theft", city: "Hyderabad", severity: "Medium" },
+    { lat: 18.5204, lon: 73.8567, type: "Malware C2", city: "Pune", severity: "High" },
+    { lat: 26.9124, lon: 75.7873, type: "Sextortion", city: "Jaipur", severity: "High" },
+    { lat: 23.0225, lon: 72.5714, type: "Investment Fraud", city: "Ahmedabad", severity: "Medium" },
 ];
 
 const DEMO_STATS_DATA: ThreatStats = {
