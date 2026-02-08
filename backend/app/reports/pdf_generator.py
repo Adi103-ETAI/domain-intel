@@ -205,7 +205,7 @@ class PDFReportGenerator:
         
         # Risk level with color
         risk_style = f'Risk{risk_level.title()}' if risk_level in ['HIGH', 'MEDIUM', 'LOW'] else 'Normal'
-        risk_text = f"Risk Level: {risk_level} (Score: {risk_score}/100)"
+        risk_text = f"Risk Level: {risk_level} (Safety Score: {risk_score}/10)"
         content.append(Paragraph(risk_text, self.styles.get(risk_style, self.styles['Normal'])))
         content.append(Spacer(1, 0.3*cm))
         

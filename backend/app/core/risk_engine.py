@@ -1,3 +1,11 @@
+"""
+Risk Engine - The Authority for Domain Risk Assessment
+
+This engine makes all risk decisions using deterministic, rule-based logic.
+AI is used ONLY for explanation enhancement, never for scoring.
+
+Safe for law enforcement and court usage.
+"""
 from typing import Dict
 from app.core.rules import RiskRules
 from app.models.domain import RiskAssessment
@@ -11,45 +19,50 @@ class RiskEngine:
     """
     The AUTHORITY — makes all risk decisions.
 
-    - 100% deterministic scoring
-    - AI is used ONLY for explanation enhancement
-    - Safe for law enforcement & court usage
+    Safety Score System:
+    - Scale: 1.0 to 10.0
+    - Higher score = SAFER domain
+    - 10/10 = Perfectly Safe
+    - 1/10 = Critical Danger
+    
+    Risk Thresholds:
+    - LOW risk (Safe): 7.0 - 10.0
+    - MEDIUM risk (Suspicious): 4.0 - 6.9
+    - HIGH risk (Dangerous): 1.0 - 3.9
     """
 
     def __init__(self):
         self.rules = RiskRules()
-        self.ai_explainer = AIExplainer()  # Optional AI layer
+        self.ai_explainer = AIExplainer()
 
     def assess_risk(self, normalized_data: Dict) -> RiskAssessment:
         """
-        Perform complete risk assessment.
+        Perform complete risk assessment using Safety Score system.
 
         AI is NEVER involved in:
-        - scoring
-        - classification
-        - rule execution
+        - Scoring
+        - Classification
+        - Rule execution
         """
         try:
-            # 1️⃣ Rule-based risk calculation (source of truth)
+            # 1️⃣ Calculate safety score (source of truth)
             score, reasons = self.rules.calculate_risk_score(normalized_data)
             risk_level = self.rules.get_risk_level(score)
 
-            # 2️⃣ Confidence calculation
+            # 2️⃣ Calculate confidence based on data completeness
             completeness = self._calculate_completeness(normalized_data)
             confidence = self.rules.get_confidence_level(completeness)
 
-            # 3️⃣ Deterministic explanation (always exists)
-            explanation = self._generate_base_explanation(
-                risk_level,
-                reasons,
-                normalized_data
+            # 3️⃣ Generate deterministic explanation
+            explanation = self._generate_explanation(
+                score, risk_level, reasons, normalized_data
             )
 
-            # 4️⃣ AI explanation enhancement (optional, non-authoritative)
+            # 4️⃣ Optional: AI enhancement (non-authoritative)
             ai_payload = {
                 "domain": normalized_data.get("domain"),
                 "risk_level": risk_level,
-                "risk_score": score,
+                "safety_score": score,
                 "reasons": reasons,
                 "confidence": confidence,
             }
@@ -59,8 +72,8 @@ class RiskEngine:
                 explanation = ai_explanation
 
             logger.info(
-                f"Risk assessment complete: {normalized_data.get('domain')} "
-                f"scored {score} ({risk_level})"
+                f"Safety assessment: {normalized_data.get('domain')} "
+                f"scored {score}/10 ({risk_level} risk)"
             )
 
             return RiskAssessment(
@@ -76,7 +89,7 @@ class RiskEngine:
             raise
 
     def _calculate_completeness(self, data: Dict) -> float:
-        """Calculate percentage of expected data present."""
+        """Calculate percentage of expected data fields present."""
         expected_fields = [
             "domain_age_days",
             "registrar",
@@ -84,38 +97,53 @@ class RiskEngine:
             "https_enabled",
             "ip_address",
         ]
-
-        available = sum(1 for field in expected_fields if data.get(field) is not None)
+        available = sum(1 for f in expected_fields if data.get(f) is not None)
         return available / len(expected_fields)
 
-    def _generate_base_explanation(
+    def _generate_explanation(
         self,
+        score: float,
         risk_level: str,
         reasons: list,
         data: Dict
     ) -> str:
         """
-        Deterministic rule-based explanation.
-        AI may enhance this, but never replaces logic.
+        Generate deterministic, human-readable explanation.
+        
+        Uses new "Safety Score" terminology throughout.
         """
-        domain = data.get("domain", "the domain")
+        domain = data.get("domain", "this domain")
 
+        # Build the opening statement based on risk level
         if risk_level == "HIGH":
-            prefix = f"The domain '{domain}' exhibits multiple high-risk indicators."
+            opening = (
+                f"⚠️ DANGER: Safety score is critically low ({score}/10). "
+                f"The domain '{domain}' shows multiple high-risk indicators."
+            )
         elif risk_level == "MEDIUM":
-            prefix = f"The domain '{domain}' shows moderate risk factors."
+            opening = (
+                f"⚡ CAUTION: Safety score is moderate ({score}/10). "
+                f"The domain '{domain}' has some suspicious characteristics."
+            )
         else:
-            prefix = f"The domain '{domain}' appears to have minimal risk indicators."
+            opening = (
+                f"✅ SAFE: Safety score is good ({score}/10). "
+                f"The domain '{domain}' appears trustworthy."
+            )
 
+        # Build the reason breakdown
         if reasons:
-            factors = " Key factors include: " + "; ".join(reasons[:3])
+            penalty_details = " | ".join(reasons)
+            factor_text = f" Factors: {penalty_details}."
         else:
-            factors = " Standard checks passed with no major concerns."
+            factor_text = " No risk factors detected."
 
-        recommendation = {
-            "HIGH": " Immediate verification and investigation recommended.",
-            "MEDIUM": " Further investigation may be warranted.",
+        # Build recommendation
+        recommendations = {
+            "HIGH": " Immediate investigation strongly recommended.",
+            "MEDIUM": " Further verification may be warranted.",
             "LOW": " Standard monitoring procedures apply.",
-        }.get(risk_level, "")
+        }
+        recommendation = recommendations.get(risk_level, "")
 
-        return prefix + factors + recommendation
+        return opening + factor_text + recommendation

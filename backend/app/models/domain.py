@@ -59,8 +59,20 @@ class SecurityInfo(BaseModel):
 
 
 class RiskAssessment(BaseModel):
-    """Risk assessment results"""
-    risk_score: int = Field(..., ge=0, le=100)
+    """
+    Risk assessment results using the Safety Score system.
+    
+    Safety Score Scale:
+    - 1.0 to 10.0 (higher = safer)
+    - 10/10 = Perfectly Safe
+    - 1/10 = Critical Danger
+    
+    Risk Levels:
+    - HIGH: Score 1.0 - 3.9 (Dangerous)
+    - MEDIUM: Score 4.0 - 6.9 (Suspicious)
+    - LOW: Score 7.0 - 10.0 (Safe)
+    """
+    risk_score: float = Field(..., ge=1.0, le=10.0, description="Safety score (1-10, higher is safer)")
     risk_level: str = Field(..., pattern="^(LOW|MEDIUM|HIGH)$")
     confidence: str = Field(..., pattern="^(low|medium|high)$")
     reasons: List[str] = []
