@@ -100,3 +100,28 @@ export async function checkApiHealth(): Promise<boolean> {
         return false;
     }
 }
+
+// --- Scan History Types ---
+export interface ScanHistoryItem {
+    id: number;
+    domain: string;
+    risk_score: number;
+    risk_level: "LOW" | "MEDIUM" | "HIGH";
+    scan_date: string;  // ISO string
+    analyst_name?: string;
+    case_id?: string;
+}
+
+// --- Fetch Scan History from Backend ---
+export async function getScanHistory(limit: number = 50): Promise<ScanHistoryItem[]> {
+    console.log(`📜 Fetching scan history (limit: ${limit})...`);
+
+    const res = await fetch(`${API_BASE}/api/v1/domain/history?limit=${limit}`);
+
+    if (!res.ok) {
+        throw new Error(`Failed to fetch history: ${await res.text()}`);
+    }
+
+    const json = await res.json();
+    return json.data;  // Backend returns { status, count, data: [...] }
+}

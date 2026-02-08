@@ -1,12 +1,9 @@
 import * as React from "react";
-import { Search, FileDown, Loader2 } from "lucide-react";
+import { Search, FileDown, Loader2, History, Briefcase, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
 
 import { TopNav } from "@/components/TopNav";
 import { RiskAssessmentCard } from "@/components/RiskAssessmentCard";
@@ -17,9 +14,39 @@ import { CaseReportsExports, type ReportItem } from "@/components/CaseReportsExp
 import { ReportDownloads } from "@/components/ReportDownloads";
 
 // Import the real API client
-import { analyzeDomain, generateReport, type AnalysisResponse } from "@/lib/api";
+import {
+  analyzeDomain,
+  generateReport,
+  getScanHistory,
+  type AnalysisResponse,
+  type ScanHistoryItem
+} from "@/lib/api";
 
-type CaseRow = Tables<"cases">;
+// Active case type (session-based)
+interface ActiveCase {
+  id: string;
+  domain: string;
+  risk_score: number;
+  risk_level: "LOW" | "MEDIUM" | "HIGH";
+  analyst_name: string;
+  case_id: string;
+  analyzed_at: string;
+}
+
+// Risk level badge component
+function RiskLevelBadge({ level }: { level: "LOW" | "MEDIUM" | "HIGH" }) {
+  const styles = {
+    LOW: "bg-success/20 text-success border-success/30",
+    MEDIUM: "bg-warning/20 text-warning border-warning/30",
+    HIGH: "bg-destructive/20 text-destructive border-destructive/30",
+  };
+
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${styles[level]}`}>
+      {level}
+    </span>
+  );
+}
 
 export function CyberInvestigationDashboard() {
   const [activeTab, setActiveTab] = React.useState<"Dashboard" | "Active Cases" | "History">("Dashboard");
@@ -36,11 +63,16 @@ export function CyberInvestigationDashboard() {
   // PDF generation state
   const [isGeneratingPdf, setIsGeneratingPdf] = React.useState(false);
 
-  // Reports and cases
+  // Reports (PDF downloads this session)
   const [reports, setReports] = React.useState<ReportItem[]>([]);
-  const [cases, setCases] = React.useState<CaseRow[]>([]);
-  const [casesLoading, setCasesLoading] = React.useState(false);
-  const [casesError, setCasesError] = React.useState<string | null>(null);
+
+  // Session-based active cases (analyses done in this session)
+  const [activeCases, setActiveCases] = React.useState<ActiveCase[]>([]);
+
+  // Persistent history from backend DB
+  const [history, setHistory] = React.useState<ScanHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = React.useState(false);
+  const [historyError, setHistoryError] = React.useState<string | null>(null);
 
   // Cleanup blob URLs on unmount
   React.useEffect(() => {
@@ -52,36 +84,27 @@ export function CyberInvestigationDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load cases when Active Cases tab is selected
+  // Load history when History tab is selected
   React.useEffect(() => {
-    if (activeTab !== "Active Cases") return;
-
-    let cancelled = false;
-    async function loadCases() {
-      setCasesLoading(true);
-      setCasesError(null);
-      const { data, error } = await supabase
-        .from("cases")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (cancelled) return;
-
-      if (error) {
-        console.error("Failed to load cases", error);
-        setCasesError("Unable to load active cases.");
-      } else {
-        setCases(data ?? []);
-      }
-      setCasesLoading(false);
-    }
-
-    loadCases();
-
-    return () => {
-      cancelled = true;
-    };
+    if (activeTab !== "History") return;
+    loadHistory();
   }, [activeTab]);
+
+  const loadHistory = async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+
+    try {
+      const data = await getScanHistory(50);
+      setHistory(data);
+    } catch (err: unknown) {
+      console.error("Failed to load history:", err);
+      const message = err instanceof Error ? err.message : "Unknown error";
+      setHistoryError(message);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   // =========================================================================
   // REAL API CALL - Domain Analysis
@@ -94,6 +117,9 @@ export function CyberInvestigationDashboard() {
       return;
     }
 
+    const currentCaseId = caseId || `CASE-${Date.now()}`;
+    const currentAnalyst = analystName || "Demo User";
+
     setError(null);
     setIsAnalyzing(true);
     setShouldFlyTo(false);
@@ -103,13 +129,26 @@ export function CyberInvestigationDashboard() {
       // Call the FastAPI backend
       const data = await analyzeDomain({
         domain: cleaned,
-        analyst_name: analystName || "Demo User",
-        case_id: caseId || `CASE-${Date.now()}`,
+        analyst_name: currentAnalyst,
+        case_id: currentCaseId,
       });
 
       console.log("✅ Analysis complete:", data);
       setResult(data);
       setShouldFlyTo(true);
+
+      // Add to session-based active cases
+      const newCase: ActiveCase = {
+        id: crypto.randomUUID(),
+        domain: cleaned,
+        risk_score: data.risk_assessment.risk_score,
+        risk_level: data.risk_assessment.risk_level,
+        analyst_name: currentAnalyst,
+        case_id: currentCaseId,
+        analyzed_at: new Date().toISOString(),
+      };
+      setActiveCases(prev => [newCase, ...prev]);
+
     } catch (err: unknown) {
       console.error("❌ Analysis failed:", err);
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -168,30 +207,33 @@ export function CyberInvestigationDashboard() {
         unitLabel="Cyber Crimes Unit"
       />
 
+      {/* ================================================================= */}
+      {/* HISTORY TAB - Persistent scan history from backend SQLite DB     */}
+      {/* ================================================================= */}
       {activeTab === "History" ? (
         <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
           <Card className="surface-elevated">
-            <CardContent className="p-6 space-y-3">
-              <div className="text-sm font-semibold">Case History</div>
-              <div className="text-xs text-muted-foreground">
-                Review previously generated reports for completed or archived investigations.
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4" />
+                  <div className="text-sm font-semibold">Scan History</div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadHistory}
+                  disabled={historyLoading}
+                >
+                  {historyLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          <CaseReportsExports items={reports} onGenerate={handleDownloadReport} />
-
-          <div className="text-left text-xs text-muted-foreground">
-            Reports are generated from the FastAPI backend using real analysis data.
-          </div>
-        </main>
-      ) : activeTab === "Active Cases" ? (
-        <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
-          <Card className="surface-elevated">
-            <CardContent className="p-6 space-y-3">
-              <div className="text-sm font-semibold">Active Cases</div>
-              <div className="text-xs text-muted-foreground">
-                Monitor ongoing investigations, review status, and quickly jump back into critical targets.
+              <div className="mt-2 text-xs text-muted-foreground">
+                Previous domain scans stored in the backend database.
               </div>
             </CardContent>
           </Card>
@@ -199,49 +241,58 @@ export function CyberInvestigationDashboard() {
           <Card className="surface-elevated">
             <CardContent className="p-0">
               <div className="overflow-hidden rounded-xl border bg-background">
+                {/* Table Header */}
                 <div className="hidden grid-cols-12 gap-3 border-b bg-panel px-4 py-3 text-[11px] font-semibold text-muted-foreground sm:grid">
-                  <div className="col-span-4">CASE</div>
-                  <div className="col-span-3">TARGET</div>
-                  <div className="col-span-3">STATUS</div>
-                  <div className="col-span-2">OPENED</div>
+                  <div className="col-span-4">DOMAIN</div>
+                  <div className="col-span-2">SCORE</div>
+                  <div className="col-span-2">RISK</div>
+                  <div className="col-span-2">ANALYST</div>
+                  <div className="col-span-2">DATE</div>
                 </div>
 
-                {casesLoading ? (
-                  <div className="p-6 text-left text-sm text-muted-foreground">Loading active cases…</div>
-                ) : casesError ? (
-                  <div className="p-6 text-left text-sm">
-                    <div className="font-medium">Unable to load cases</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{casesError}</div>
+                {historyLoading ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                    Loading scan history...
                   </div>
-                ) : cases.length === 0 ? (
+                ) : historyError ? (
                   <div className="p-6 text-left text-sm">
-                    <div className="font-medium">No active cases</div>
+                    <div className="font-medium text-destructive">Failed to load history</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{historyError}</div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Make sure the backend is running on http://localhost:8000
+                    </div>
+                  </div>
+                ) : history.length === 0 ? (
+                  <div className="p-6 text-left text-sm">
+                    <div className="font-medium">No scan history</div>
                     <div className="mt-1 text-xs text-muted-foreground">
-                      New investigations will appear here once created in the case management view.
+                      Analyzed domains will appear here after you run scans.
                     </div>
                   </div>
                 ) : (
                   <ul className="divide-y">
-                    {cases.map((c) => (
-                      <li key={c.id} className="p-4">
+                    {history.map((scan) => (
+                      <li key={scan.id} className="p-4 hover:bg-panel/50 transition-colors">
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-12 sm:items-center sm:gap-3">
                           <div className="sm:col-span-4">
-                            <div className="truncate text-xs font-semibold">{c.title}</div>
-                            {c.summary ? (
-                              <div className="truncate text-[11px] text-muted-foreground">{c.summary}</div>
-                            ) : null}
+                            <div className="truncate text-xs font-semibold">{scan.domain}</div>
+                            {scan.case_id && (
+                              <div className="truncate text-[11px] text-muted-foreground">{scan.case_id}</div>
+                            )}
                           </div>
-                          <div className="sm:col-span-3">
-                            <div className="truncate text-xs font-medium">{c.target || "—"}</div>
+                          <div className="sm:col-span-2">
+                            <div className="text-sm font-bold">{scan.risk_score.toFixed(1)}/10</div>
                           </div>
-                          <div className="sm:col-span-3">
-                            <span className="inline-flex items-center rounded-full border bg-panel px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                              {c.status}
-                            </span>
+                          <div className="sm:col-span-2">
+                            <RiskLevelBadge level={scan.risk_level} />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <div className="truncate text-xs">{scan.analyst_name || "—"}</div>
                           </div>
                           <div className="sm:col-span-2">
                             <div className="text-xs text-muted-foreground">
-                              {new Date(c.created_at).toLocaleString()}
+                              {new Date(scan.scan_date).toLocaleDateString()}
                             </div>
                           </div>
                         </div>
@@ -252,7 +303,93 @@ export function CyberInvestigationDashboard() {
               </div>
             </CardContent>
           </Card>
+
+          <div className="text-left text-xs text-muted-foreground">
+            {history.length > 0
+              ? `✅ Showing ${history.length} scans from backend database`
+              : "History is fetched from the FastAPI backend SQLite database."
+            }
+          </div>
         </main>
+
+        /* ================================================================= */
+        /* ACTIVE CASES TAB - Session-based (domains analyzed this session) */
+        /* ================================================================= */
+      ) : activeTab === "Active Cases" ? (
+        <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+          <Card className="surface-elevated">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2">
+                <Briefcase className="h-4 w-4" />
+                <div className="text-sm font-semibold">Active Cases (This Session)</div>
+              </div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                Domains you have analyzed during this browser session. {activeCases.length > 0 && `(${activeCases.length} case${activeCases.length !== 1 ? 's' : ''})`}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="surface-elevated">
+            <CardContent className="p-0">
+              <div className="overflow-hidden rounded-xl border bg-background">
+                {/* Table Header */}
+                <div className="hidden grid-cols-12 gap-3 border-b bg-panel px-4 py-3 text-[11px] font-semibold text-muted-foreground sm:grid">
+                  <div className="col-span-3">CASE ID</div>
+                  <div className="col-span-3">DOMAIN</div>
+                  <div className="col-span-2">SCORE</div>
+                  <div className="col-span-2">RISK</div>
+                  <div className="col-span-2">ANALYZED</div>
+                </div>
+
+                {activeCases.length === 0 ? (
+                  <div className="p-6 text-left text-sm">
+                    <div className="font-medium">No active cases</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Go to the Dashboard and analyze a domain to add it to your active cases.
+                    </div>
+                  </div>
+                ) : (
+                  <ul className="divide-y">
+                    {activeCases.map((c) => (
+                      <li key={c.id} className="p-4 hover:bg-panel/50 transition-colors">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-12 sm:items-center sm:gap-3">
+                          <div className="sm:col-span-3">
+                            <div className="truncate text-xs font-semibold">{c.case_id}</div>
+                            <div className="truncate text-[11px] text-muted-foreground">{c.analyst_name}</div>
+                          </div>
+                          <div className="sm:col-span-3">
+                            <div className="truncate text-xs font-medium">{c.domain}</div>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <div className="text-sm font-bold">{c.risk_score.toFixed(1)}/10</div>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <RiskLevelBadge level={c.risk_level} />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(c.analyzed_at).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <CaseReportsExports items={reports} onGenerate={handleDownloadReport} />
+
+          <div className="text-left text-xs text-muted-foreground">
+            Active cases are stored in browser memory and will be cleared when you close the tab.
+          </div>
+        </main>
+
+        /* ================================================================= */
+        /* DASHBOARD TAB - Main analysis view                               */
+        /* ================================================================= */
       ) : (
         <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
           {/* Search Card */}
