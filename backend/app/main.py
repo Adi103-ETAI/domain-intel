@@ -14,7 +14,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
-from app.api.v1.endpoints import domain, report, auth
+from app.api.v1.endpoints import domain, report, auth, intel
 from app.db.base import init_db
 import logging
 
@@ -70,6 +70,11 @@ app.include_router(
     auth.router,
     prefix="/api/v1/auth",
     tags=["auth"]
+)
+app.include_router(
+    intel.router,
+    prefix="/api/v1/intel",
+    tags=["intel"]
 )
 
 

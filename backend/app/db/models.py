@@ -56,3 +56,26 @@ class ScanHistory(Base):
     def __repr__(self):
         return f"<ScanHistory(id={self.id}, domain='{self.domain}', risk_level='{self.risk_level}')>"
 
+
+class ThreatIntel(Base):
+    """
+    Threat Intelligence data for geospatial analysis.
+    
+    Stores indicators (IPs/domains) with threat classification
+    and geographic coordinates for mapping.
+    """
+    __tablename__ = "threat_intel"
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    indicator = Column(String(255), index=True, nullable=False)  # IP or Domain
+    threat_type = Column(String(100), nullable=False)  # e.g. "Phishing", "Malware"
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    country = Column(String(100), nullable=True)
+    city = Column(String(100), nullable=True)
+    source = Column(String(100), nullable=True)  # e.g. "PhishTank", "AbuseIPDB"
+    detected_at = Column(DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<ThreatIntel(id={self.id}, indicator='{self.indicator}', type='{self.threat_type}')>"
+

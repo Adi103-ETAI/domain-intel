@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CheckCircle2, CircleUserRound } from "lucide-react";
+import { CheckCircle2, CircleUserRound, Globe } from "lucide-react";
 import { motion, LayoutGroup } from "framer-motion";
 import {
   DropdownMenu,
@@ -67,6 +67,16 @@ export function TopNav({
               })}
             </nav>
           </LayoutGroup>
+
+          {/* Global Threats Link */}
+          <button
+            type="button"
+            className="hidden items-center gap-1.5 text-sm text-primary hover:text-primary/80 font-medium transition-colors focus-ring sm:flex"
+            onClick={() => window.location.href = '/threats'}
+          >
+            <Globe className="h-4 w-4" />
+            Global Threats
+          </button>
         </div>
 
         <div className="flex items-center gap-3">

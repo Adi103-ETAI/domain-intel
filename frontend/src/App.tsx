@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AuthPage from "./pages/AuthPage";
+import GlobalThreats from "./pages/GlobalThreats";
 import { isAuthenticated } from "@/lib/api";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,16 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Index />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Protected route - Global Threats */}
+          <Route
+            path="/threats"
+            element={
+              <ProtectedRoute>
+                <GlobalThreats />
               </ProtectedRoute>
             }
           />
