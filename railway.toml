@@ -1,26 +1,5 @@
+# DomainIntel Monorepo
+# Deploy backend and frontend as separate Railway services
+
 [build]
 builder = "nixpacks"
-
-# Service 1: The Backend (Python)
-[[services]]
-name = "backend"
-rootDirectory = "backend"
-buildCommand = "pip install -r requirements.txt"
-startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-healthcheckPath = "/health"
-restartPolicyType = "on_failure"
-
-# Service 2: The Frontend (React)
-[[services]]
-name = "frontend"
-rootDirectory = "frontend"
-buildCommand = "npm install && npm run build"
-startCommand = "npx serve -s dist -l $PORT"
-healthcheckPath = "/"
-restartPolicyType = "on_failure"
-
-# Database Service (Optional: Adds a PostgreSQL DB automatically)
-[[services]]
-name = "database"
-image = "postgres"
-env = { POSTGRES_USER = "${POSTGRES_USER}", POSTGRES_PASSWORD = "${POSTGRES_PASSWORD}", POSTGRES_DB = "${POSTGRES_DB}" }

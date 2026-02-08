@@ -1,4 +1,4 @@
-# 🔍 CyberTrace - Cyber Investigation Platform
+# 🔍 DomainIntel - Cyber Investigation Platform
 
 <div align="center">
 
@@ -47,7 +47,7 @@
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Local Development)
 
 ### Prerequisites
 - Python 3.10+
@@ -79,6 +79,49 @@ Frontend runs at `http://localhost:8080`
 
 ---
 
+## 🚂 Railway Deployment
+
+This project is configured for **Railway** deployment with separate services.
+
+### Deploy Steps:
+
+1. **Create a Railway Project**
+   - Go to [railway.app](https://railway.app)
+   - Create new project → "Deploy from GitHub repo"
+
+2. **Deploy Backend Service**
+   - Add service → Select GitHub repo
+   - Set **Root Directory**: `backend`
+   - Add environment variables:
+     ```
+     DATABASE_URL=sqlite:///./domainintel.db
+     DEBUG=false
+     SECRET_KEY=your-secret-key
+     ALLOWED_ORIGINS=https://your-frontend.railway.app
+     ```
+
+3. **Deploy Frontend Service**
+   - Add another service → Same repo
+   - Set **Root Directory**: `frontend`
+   - Add environment variables:
+     ```
+     VITE_API_URL=https://your-backend.railway.app
+     ```
+
+4. **Generate Domains**
+   - Go to each service → Settings → Generate Domain
+
+### Environment Variables
+
+| Service | Variable | Description |
+|---------|----------|-------------|
+| Backend | `DATABASE_URL` | SQLite or PostgreSQL connection |
+| Backend | `SECRET_KEY` | JWT secret key |
+| Backend | `ALLOWED_ORIGINS` | Frontend URL for CORS |
+| Frontend | `VITE_API_URL` | Backend API URL |
+
+---
+
 ## 📁 Project Structure
 
 ```
@@ -86,25 +129,23 @@ Domain-Intel/
 ├── backend/
 │   ├── app/
 │   │   ├── api/v1/endpoints/    # API routes
-│   │   │   ├── scan.py          # Domain scanning
+│   │   │   ├── domain.py        # Domain scanning
 │   │   │   ├── intel.py         # Threat intelligence
 │   │   │   └── auth.py          # Authentication
 │   │   ├── services/            # Business logic
-│   │   │   ├── domain_scanner.py
-│   │   │   └── threat_ingestor.py
-│   │   ├── db/                  # Database models
 │   │   └── main.py              # FastAPI app
-│   └── requirements.txt
+│   ├── requirements.txt
+│   ├── Procfile                 # Railway/Heroku
+│   ├── nixpacks.toml            # Nixpacks config
+│   └── railway.toml             # Railway config
 ├── frontend/
 │   ├── src/
 │   │   ├── components/          # React components
-│   │   │   ├── ThreatMap.tsx    # Leaflet map
-│   │   │   ├── ThreatStatsCharts.tsx
-│   │   │   └── TopNav.tsx
 │   │   ├── pages/               # Route pages
-│   │   │   └── GlobalThreats.tsx
 │   │   └── lib/api.ts           # API client
-│   └── package.json
+│   ├── package.json
+│   ├── nixpacks.toml            # Nixpacks config
+│   └── railway.toml             # Railway config
 └── README.md
 ```
 
@@ -114,17 +155,15 @@ Domain-Intel/
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| `GET` | `/health` | Health check |
 | `POST` | `/api/v1/scan/quick` | Quick domain scan |
 | `POST` | `/api/v1/scan/full` | Full domain investigation |
 | `GET` | `/api/v1/intel/map` | Threat map coordinates |
 | `GET` | `/api/v1/intel/stats` | Aggregated threat statistics |
-| `GET` | `/api/v1/scan/history` | Scan history |
 
 ---
 
 ## 🇮🇳 India Cybercrime Hotspots
-
-The platform includes demo data for major Indian cybercrime hotspots:
 
 | Location | Threat Type | Severity |
 |----------|-------------|----------|
@@ -138,7 +177,7 @@ The platform includes demo data for major Indian cybercrime hotspots:
 
 ## 📄 License
 
-MIT License - See [LICENSE](LICENSE) for details.
+MIT License
 
 ---
 
