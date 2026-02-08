@@ -56,8 +56,6 @@ export interface AnalysisResponse {
 // --- API Functions ---
 
 export async function analyzeDomain(req: AnalysisRequest): Promise<AnalysisResponse> {
-    console.log(`📡 Analyzing domain: ${req.domain} via ${API_BASE}...`);
-
     const res = await fetch(`${API_BASE}/api/v1/domain/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -74,8 +72,6 @@ export async function analyzeDomain(req: AnalysisRequest): Promise<AnalysisRespo
 }
 
 export async function generateReport(req: AnalysisRequest): Promise<string> {
-    console.log(`📄 Generating PDF for: ${req.domain}...`);
-
     const res = await fetch(`${API_BASE}/api/v1/report/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -114,8 +110,6 @@ export interface ScanHistoryItem {
 
 // --- Fetch Scan History from Backend ---
 export async function getScanHistory(limit: number = 50): Promise<ScanHistoryItem[]> {
-    console.log(`📜 Fetching scan history (limit: ${limit})...`);
-
     const res = await fetch(`${API_BASE}/api/v1/domain/history?limit=${limit}`);
 
     if (!res.ok) {
@@ -124,4 +118,112 @@ export async function getScanHistory(limit: number = 50): Promise<ScanHistoryIte
 
     const json = await res.json();
     return json.data;  // Backend returns { status, count, data: [...] }
+}
+
+// =====================================================
+// AUTHENTICATION
+// =====================================================
+
+// --- Auth Types ---
+export interface LoginPayload {
+    email: string;
+    password: string;
+}
+
+export interface SignupPayload {
+    email: string;
+    password: string;
+    fullName: string;
+    organization: string;
+}
+
+export interface AuthResponse {
+    token: string;
+    message: string;
+    user_name: string;
+    organization: string;
+}
+
+// --- Auth API Functions ---
+export async function login(payload: LoginPayload): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Login failed" }));
+        throw new Error(err.detail || "Invalid credentials");
+    }
+    const data: AuthResponse = await res.json();
+
+    // Save user details to localStorage
+    localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.setItem(USER_KEY, data.user_name);
+    localStorage.setItem(ORG_KEY, data.organization);
+
+    return data;
+}
+
+export async function signup(payload: SignupPayload): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/api/v1/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Signup failed" }));
+        throw new Error(err.detail || "Could not create account");
+    }
+    const data: AuthResponse = await res.json();
+
+    // Save user details to localStorage
+    localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.setItem(USER_KEY, data.user_name);
+    localStorage.setItem(ORG_KEY, data.organization);
+
+    return data;
+}
+
+// --- Auth Helper Functions ---
+const TOKEN_KEY = "cybertrace_token";
+const USER_KEY = "cybertrace_user";
+const ORG_KEY = "cybertrace_org";
+
+export function getToken(): string | null {
+    return localStorage.getItem(TOKEN_KEY);
+}
+
+export function isAuthenticated(): boolean {
+    const token = getToken();
+    if (!token) return false;
+
+    // Optionally check token expiry (JWT contains exp claim)
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const exp = payload.exp * 1000; // Convert to milliseconds
+        return Date.now() < exp;
+    } catch {
+        return false;
+    }
+}
+
+export function logout(): void {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(ORG_KEY);
+}
+
+export function getUserDetails(): { name: string; org: string } {
+    return {
+        name: localStorage.getItem(USER_KEY) || "Unknown Agent",
+        org: localStorage.getItem(ORG_KEY) || "Cyber Cell"
+    };
+}
+
+export function getAuthHeader(): Record<string, string> {
+    const token = getToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
 }

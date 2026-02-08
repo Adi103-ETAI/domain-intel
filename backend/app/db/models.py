@@ -3,9 +3,29 @@ Database Models for DomainIntel
 
 SQLAlchemy ORM models for persisting scan history and other data.
 """
-from sqlalchemy import Column, Integer, String, DateTime, Text, Float
+from sqlalchemy import Column, Integer, String, DateTime, Text, Float, Boolean
 from datetime import datetime
 from app.db.base import Base
+
+
+class User(Base):
+    """
+    User model for authentication.
+    
+    Stores operator/analyst credentials and profile info.
+    """
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    full_name = Column(String(255), nullable=True)
+    organization = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<User(id={self.id}, email='{self.email}')>"
 
 
 class ScanHistory(Base):
@@ -35,3 +55,4 @@ class ScanHistory(Base):
     
     def __repr__(self):
         return f"<ScanHistory(id={self.id}, domain='{self.domain}', risk_level='{self.risk_level}')>"
+

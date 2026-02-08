@@ -18,6 +18,7 @@ import {
   analyzeDomain,
   generateReport,
   getScanHistory,
+  getUserDetails,
   type AnalysisResponse,
   type ScanHistoryItem
 } from "@/lib/api";
@@ -51,8 +52,16 @@ function RiskLevelBadge({ level }: { level: "LOW" | "MEDIUM" | "HIGH" }) {
 export function CyberInvestigationDashboard() {
   const [activeTab, setActiveTab] = React.useState<"Dashboard" | "Active Cases" | "History">("Dashboard");
   const [domain, setDomain] = React.useState("");
-  const [analystName, setAnalystName] = React.useState("Det. J. Doe");
+  const [user, setUser] = React.useState({ name: "Agent", org: "Cyber Cell" });
+  const [analystName, setAnalystName] = React.useState("");
   const [caseId, setCaseId] = React.useState("");
+
+  // Load user details on mount
+  React.useEffect(() => {
+    const userDetails = getUserDetails();
+    setUser(userDetails);
+    setAnalystName(userDetails.name);
+  }, []);
 
   // Analysis state
   const [error, setError] = React.useState<string | null>(null);
@@ -133,7 +142,6 @@ export function CyberInvestigationDashboard() {
         case_id: currentCaseId,
       });
 
-      console.log("✅ Analysis complete:", data);
       setResult(data);
       setShouldFlyTo(true);
 
@@ -203,8 +211,8 @@ export function CyberInvestigationDashboard() {
       <TopNav
         active={activeTab}
         onChangeActive={setActiveTab}
-        userLabel={analystName || "Det. J. Doe"}
-        unitLabel="Cyber Crimes Unit"
+        userLabel={user.name}
+        unitLabel={user.org}
       />
 
       {/* ================================================================= */}

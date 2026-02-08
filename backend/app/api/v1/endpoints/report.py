@@ -58,7 +58,6 @@ async def generate_report(
         
     except Exception as e:
         logger.error(f"Report generation failed: {str(e)}")
-        print(f"CRITICAL ERROR: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Report generation failed: {str(e)}"
